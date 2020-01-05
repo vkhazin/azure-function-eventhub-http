@@ -122,4 +122,5 @@ GO
 }
 ```
 * Based on the action insert, update, or delete a record in the Cosmos DB
+* Update `SyncTimestamp` when writing to Cosmos DB
 
