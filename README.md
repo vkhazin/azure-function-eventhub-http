@@ -4,7 +4,7 @@
 
 * Function to use dotnet core C#
 * Single code base with two different triggers: https and event-hub
-* The function will be depoyed twice with the same code base, but two different triggers
+* The function will be depoyed twice with the same code base, but two different triggers: Event Hub and Http
 * Unit tests
 * Markdown documentaion
 
