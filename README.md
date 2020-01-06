@@ -100,7 +100,7 @@ GO
 ```
 {
   "table": "FareTypes",
-  "action": "insert|update|delete",
+  "action": "insert|update|delete|sync",
   "timestamp": "2002-10-02T15:00:00.05Z",
   "id": "single field pk field value",
   "data": {
@@ -124,5 +124,6 @@ GO
 }
 ```
 * Based on the action insert, update, or delete a record in the Cosmos DB
+* Sync action is used for initial data population and for periodic re-sync process
 * Update `SyncTimestamp` when writing to Cosmos DB
 
