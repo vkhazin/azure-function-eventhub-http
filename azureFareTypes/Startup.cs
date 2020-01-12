@@ -16,6 +16,15 @@ namespace azureFareTypes
             string connectionString = Environment.GetEnvironmentVariable("SqlConnectionString");
             builder.Services.AddDbContext<FareTypesDbContext>(
                 options => SqlServerDbContextOptionsExtensions.UseSqlServer(options, connectionString));
+
+            builder.Services.AddTransient<IFareTypesCosmosDb>(cosmosDb => new FareTypesCosmosDb(
+                new CosmosDbSettings()
+                {
+                    EndpointUri = Environment.GetEnvironmentVariable("CosmosEndpointUri"),
+                    PrimaryKey = Environment.GetEnvironmentVariable("CosmosPrimaryKey"),
+                    DatabaseId = Environment.GetEnvironmentVariable("CosmosDatabaseId"),
+                    ContainterId = Environment.GetEnvironmentVariable("CosmosContainterId")
+                }));
         }
     }
 }

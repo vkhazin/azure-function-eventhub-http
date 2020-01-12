@@ -9,33 +9,40 @@ using System.Threading.Tasks;
 
 namespace azureFareTypes
 {
-    public class FareTypesCosmosDb
+    public class FareTypesCosmosDb : IFareTypesCosmosDb
     {
+        private CosmosDbSettings _settings;
         private CosmosClient _client;
         private Database _database;
         private Container _container;
 
         private const int DefaultPartion = 1;
 
-        public async Task Init()
+        public FareTypesCosmosDb(CosmosDbSettings settings)
         {
-            _client = new CosmosClient(
-                Environment.GetEnvironmentVariable("CosmosEndpointUri"),
-                Environment.GetEnvironmentVariable("CosmosPrimaryKey"));
+            _settings = settings;
+        }
 
-            _database = await _client.CreateDatabaseIfNotExistsAsync(
-                Environment.GetEnvironmentVariable("CosmosDatabaseId"));
-            _container = await _database.CreateContainerIfNotExistsAsync(new ContainerProperties(
-                Environment.GetEnvironmentVariable("CosmosContainterId"), "/Partion"));
+        private async Task<Container> Container()
+        {
+            if (_container == null)
+            {
+                _client = new CosmosClient(_settings.EndpointUri, _settings.PrimaryKey);
+                _database = await _client.CreateDatabaseIfNotExistsAsync(_settings.DatabaseId);
+                _container = await _database.CreateContainerIfNotExistsAsync(new ContainerProperties(
+                    _settings.ContainterId, "/Partion"));
+            }
+            return _container;
         }
 
         public async Task<FareType> Get(int id) => await Get(id.ToString());
 
-        public async Task<FareType> Get(string id)
+        private async Task<FareType> Get(string id)
         {
             try
             {
-                var itemResponse = await _container.ReadItemAsync<CosmosFareType>(id, new PartitionKey(DefaultPartion));
+                var container = await Container();
+                var itemResponse = await container.ReadItemAsync<CosmosFareType>(id, new PartitionKey(DefaultPartion));
                 return itemResponse.Resource.ToFareType();
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
@@ -44,9 +51,10 @@ namespace azureFareTypes
             }
         }
 
-        public FareType[] GetAll()
+        public async Task<FareType[]> GetAll()
         {
-            return _container.GetItemLinqQueryable<CosmosFareType>(true)
+            var container = await Container();
+            return container.GetItemLinqQueryable<CosmosFareType>(true)
                 .Select(cf => (FareType)cf)
                 .ToArray();
         }
@@ -59,8 +67,9 @@ namespace azureFareTypes
             var existingItem = await Get(data.FareTypeId);
             if (existingItem == null)
             {
+                var container = await Container();
                 var cosmosData = new CosmosFareType(data, DefaultPartion);
-                await _container.CreateItemAsync(cosmosData, new PartitionKey(DefaultPartion));
+                await container.CreateItemAsync(cosmosData, new PartitionKey(DefaultPartion));
             }
             return existingItem == null;
         }
@@ -73,8 +82,9 @@ namespace azureFareTypes
             var existingItem = await Get(id);
             if (existingItem != null)
             {
+                var container = await Container();
                 var cosmosData = new CosmosFareType(data, DefaultPartion);
-                await _container.ReplaceItemAsync(cosmosData, id);
+                await container.ReplaceItemAsync(cosmosData, id);
             }
             return existingItem != null;
         }
@@ -87,7 +97,8 @@ namespace azureFareTypes
             var existingItem = await Get(id);
             if (existingItem != null)
             {
-                await _container.DeleteItemAsync<CosmosFareType>(id, new PartitionKey(DefaultPartion));
+                var container = await Container();
+                await container.DeleteItemAsync<CosmosFareType>(id, new PartitionKey(DefaultPartion));
             }
             return existingItem != null;
         }

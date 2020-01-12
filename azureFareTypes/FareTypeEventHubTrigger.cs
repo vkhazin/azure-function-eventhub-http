@@ -12,11 +12,13 @@ namespace azureFareTypes
 {
     public class FareTypeEventHubTrigger
     {
-        public FareTypesDbContext FareTypesDb;
+        private readonly FareTypesDbContext _db;
+        private readonly IFareTypesCosmosDb _cosmosDb;
 
-        public FareTypeEventHubTrigger(FareTypesDbContext db)
+        public FareTypeEventHubTrigger(FareTypesDbContext db, IFareTypesCosmosDb cosmosDb)
         {
-            FareTypesDb = db;
+            _db = db;
+            _cosmosDb = cosmosDb;
         }
 
         [FunctionName("EventHubTrigger")]
@@ -27,30 +29,27 @@ namespace azureFareTypes
             var fareTypeEvent = JsonConvert.DeserializeObject<FareTypeEvent>(Encoding.UTF8.GetString(eventData.Body));
             if (fareTypeEvent != null && fareTypeEvent.Table == "FareTypes")
             {
-                var cosmosDb = new FareTypesCosmosDb();
-                await cosmosDb.Init();
-
                 switch (fareTypeEvent.Action)
                 {
                     case "insert":
-                        await cosmosDb.Insert(fareTypeEvent.Data);
+                        await _cosmosDb.Insert(fareTypeEvent.Data);
                         break;
 
                     case "update":
-                        await cosmosDb.Update(fareTypeEvent.Id, fareTypeEvent.Data);
+                        await _cosmosDb.Update(fareTypeEvent.Id, fareTypeEvent.Data);
                         break;
 
                     case "delete":
-                        await cosmosDb.Delete(fareTypeEvent.Id);
+                        await _cosmosDb.Delete(fareTypeEvent.Id);
                         break;
 
                     case "sync":
-                        var fareTypes = await FareTypesDb.FareTypes.ToListAsync();
+                        var fareTypes = await _db.FareTypes.ToListAsync();
                         foreach (var fareType in fareTypes)
                         {
-                            if (!await cosmosDb.Insert(fareType))
+                            if (!await _cosmosDb.Insert(fareType))
                             {
-                                await cosmosDb.Update(fareType.FareTypeId.ToString(), fareType);
+                                await _cosmosDb.Update(fareType.FareTypeId.ToString(), fareType);
                             }
                         }
                         break;

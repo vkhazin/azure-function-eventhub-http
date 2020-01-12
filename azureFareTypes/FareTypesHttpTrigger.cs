@@ -14,11 +14,13 @@ namespace azureFareTypes
 {
     public class FareTypesHttpTrigger
     {
-        public FareTypesDbContext FareTypesDb;
+        private readonly FareTypesDbContext _db;
+        private readonly IFareTypesCosmosDb _cosmosDb;
 
-        public FareTypesHttpTrigger(FareTypesDbContext db)
+        public FareTypesHttpTrigger(FareTypesDbContext db, IFareTypesCosmosDb cosmosDb)
         {
-            FareTypesDb = db;
+            _db = db;
+            _cosmosDb = cosmosDb;
         }
 
         [FunctionName("FareTypesHttpTriggerGet")]
@@ -27,10 +29,7 @@ namespace azureFareTypes
             int id,
             ILogger log)
         {
-            var cosmosDb = new FareTypesCosmosDb();
-            await cosmosDb.Init();
-
-            var fareType = await cosmosDb.Get(id);
+            var fareType = await _cosmosDb.Get(id);
             return fareType != null
                 ? (ActionResult)new OkObjectResult(fareType)
                 : new NotFoundResult();
@@ -41,11 +40,8 @@ namespace azureFareTypes
             [HttpTrigger(AuthorizationLevel.Function, "get", "delete", "put", "patch", Route = "farerates")] HttpRequest req,
             ILogger log)
         {
-            var cosmosDb = new FareTypesCosmosDb();
-            await cosmosDb.Init();
-
             return req.Method.ToLower() == "get"
-                ? (ActionResult)new OkObjectResult(cosmosDb.GetAll())
+                ? (ActionResult)new OkObjectResult(await _cosmosDb.GetAll())
                 : new StatusCodeResult(StatusCodes.Status400BadRequest);
         }
 
@@ -55,7 +51,7 @@ namespace azureFareTypes
             int id,
             ILogger log)
         {
-            return new StatusCodeResult(await FareTypesDb.Delete(id)
+            return new StatusCodeResult(await _db.Delete(id)
                 ? StatusCodes.Status200OK
                 : StatusCodes.Status404NotFound);
         }
@@ -71,7 +67,7 @@ namespace azureFareTypes
             if (data == null)
                 return new StatusCodeResult(StatusCodes.Status400BadRequest);
 
-            return new StatusCodeResult(await FareTypesDb.Insert(data)
+            return new StatusCodeResult(await _db.Insert(data)
                 ? StatusCodes.Status201Created
                 : StatusCodes.Status409Conflict);
         }
@@ -88,7 +84,7 @@ namespace azureFareTypes
             if (data == null || data.FareTypeId != id)
                 return new StatusCodeResult(StatusCodes.Status400BadRequest);
 
-            return new StatusCodeResult(await FareTypesDb.Delete(id) && await FareTypesDb.Insert(data)
+            return new StatusCodeResult(await _db.Delete(id) && await _db.Insert(data)
                 ? StatusCodes.Status200OK
                 : StatusCodes.Status404NotFound);
         }
@@ -105,7 +101,7 @@ namespace azureFareTypes
             if (data == null)
                 return new StatusCodeResult(StatusCodes.Status400BadRequest);
 
-            return new StatusCodeResult(await FareTypesDb.Update(id, data)
+            return new StatusCodeResult(await _db.Update(id, data)
                 ? StatusCodes.Status200OK
                 : StatusCodes.Status404NotFound);
         }
