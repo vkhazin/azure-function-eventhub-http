@@ -25,11 +25,13 @@ namespace azureFareTypes
 
         [FunctionName("FareTypesHttpTriggerGet")]
         public async Task<IActionResult> RunGet(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "farerates/{id}")] HttpRequest req,
+            [HttpTrigger("get", Route = "faretypes/{id}")] HttpRequest req,
             int id,
             ILogger log)
         {
+            log.LogInformation($"Get '{id}'");
             var fareType = await _cosmosDb.Get(id);
+
             return fareType != null
                 ? (ActionResult)new OkObjectResult(fareType)
                 : new NotFoundResult();
@@ -37,20 +39,24 @@ namespace azureFareTypes
 
         [FunctionName("FareTypesHttpTriggerGetAll")]
         public async Task<IActionResult> RunGetAll(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "delete", "put", "patch", Route = "farerates")] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "faretypes")] HttpRequest req,
             ILogger log)
         {
-            return req.Method.ToLower() == "get"
-                ? (ActionResult)new OkObjectResult(await _cosmosDb.GetAll())
-                : new StatusCodeResult(StatusCodes.Status400BadRequest);
+            int.TryParse(req.Query["skip"], out int skip);
+            int.TryParse(req.Query["limit"], out int limit);
+            limit = limit == 0 ? 20 : limit;
+
+            log.LogInformation($"Get all, skip '{skip}', limit '{limit}'");
+            return new OkObjectResult(await _cosmosDb.GetAll(skip, limit));
         }
 
         [FunctionName("FareTypesHttpTriggerDelete")]
         public async Task<IActionResult> RunDelete(
-            [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "farerates/{id}")] HttpRequest req,
+            [HttpTrigger("delete", Route = "faretypes/{id}")] HttpRequest req,
             int id,
             ILogger log)
         {
+            log.LogInformation($"Delete '{id}'");
             return new StatusCodeResult(await _db.Delete(id)
                 ? StatusCodes.Status200OK
                 : StatusCodes.Status404NotFound);
@@ -58,15 +64,19 @@ namespace azureFareTypes
 
         [FunctionName("FareTypesHttpTriggerPost")]
         public async Task<IActionResult> RunPost(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = "farerates")] HttpRequest req,
+            [HttpTrigger("post", Route = "faretypes")] HttpRequest req,
             ILogger log)
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var data = JsonConvert.DeserializeObject<FareType>(requestBody);
 
             if (data == null)
+            {
+                log.LogError($"Unknown Post body: '{requestBody}'");
                 return new StatusCodeResult(StatusCodes.Status400BadRequest);
+            }
 
+            log.LogInformation($"Post '{data.FareTypeId}'");
             return new StatusCodeResult(await _db.Insert(data)
                 ? StatusCodes.Status201Created
                 : StatusCodes.Status409Conflict);
@@ -74,7 +84,7 @@ namespace azureFareTypes
 
         [FunctionName("FareTypesHttpTriggerPut")]
         public async Task<IActionResult> RunPut(
-            [HttpTrigger(AuthorizationLevel.Function, "put", Route = "farerates/{id}")] HttpRequest req,
+            [HttpTrigger("put", Route = "faretypes/{id}")] HttpRequest req,
             int id,
             ILogger log)
         {
@@ -82,16 +92,20 @@ namespace azureFareTypes
             var data = JsonConvert.DeserializeObject<FareType>(requestBody);
 
             if (data == null || data.FareTypeId != id)
+            {
+                log.LogError($"Unknown Put body: '{requestBody}'");
                 return new StatusCodeResult(StatusCodes.Status400BadRequest);
+            }
 
-            return new StatusCodeResult(await _db.Delete(id) && await _db.Insert(data)
+            log.LogInformation($"Put '{id}'"); 
+            return new StatusCodeResult(await _db.Upsert(id, data)
                 ? StatusCodes.Status200OK
                 : StatusCodes.Status404NotFound);
         }
 
         [FunctionName("FareTypesHttpTriggerPatch")]
         public async Task<IActionResult> RunPatch(
-            [HttpTrigger(AuthorizationLevel.Function, "patch", Route = "farerates/{id}")] HttpRequest req,
+            [HttpTrigger("patch", Route = "faretypes/{id}")] HttpRequest req,
             int id,
             ILogger log)
         {
@@ -99,8 +113,12 @@ namespace azureFareTypes
             var data = JsonConvert.DeserializeObject<FareType>(requestBody);
 
             if (data == null)
+            {
+                log.LogError($"Unknown Patch body: '{requestBody}'");
                 return new StatusCodeResult(StatusCodes.Status400BadRequest);
+            }
 
+            log.LogInformation($"Patch '{data.FareTypeId}'"); 
             return new StatusCodeResult(await _db.Update(id, data)
                 ? StatusCodes.Status200OK
                 : StatusCodes.Status404NotFound);

@@ -24,7 +24,8 @@ namespace azureFareTypes
                     PrimaryKey = Environment.GetEnvironmentVariable("CosmosPrimaryKey"),
                     DatabaseId = Environment.GetEnvironmentVariable("CosmosDatabaseId"),
                     ContainterId = Environment.GetEnvironmentVariable("CosmosContainterId")
-                }));
+                },
+                cosmosDb.GetRequiredService<ILogger>()));
         }
     }
 }

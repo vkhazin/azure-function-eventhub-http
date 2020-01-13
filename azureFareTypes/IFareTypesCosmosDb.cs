@@ -9,11 +9,9 @@ namespace azureFareTypes
     {
         Task<FareType> Get(int id);
 
-        Task<FareType[]> GetAll();
+        Task<FareType[]> GetAll(int skip, int limit);
 
-        Task<bool> Insert(FareType data);
-
-        Task<bool> Update(string id, FareType data);
+        Task<bool> Upsert(FareType data);
 
         Task<bool> Delete(string id);
     }

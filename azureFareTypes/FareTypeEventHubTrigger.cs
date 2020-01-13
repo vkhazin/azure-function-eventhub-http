@@ -23,37 +23,48 @@ namespace azureFareTypes
 
         [FunctionName("EventHubTrigger")]
         public async Task Run(
-            [EventHubTrigger("farerates", Connection = "EventHubConnectionString")] EventData eventData,
+            [EventHubTrigger("faretypes", Connection = "EventHubConnectionString")] EventData eventData,
             ILogger log)
         {
-            var fareTypeEvent = JsonConvert.DeserializeObject<FareTypeEvent>(Encoding.UTF8.GetString(eventData.Body));
-            if (fareTypeEvent != null && fareTypeEvent.Table == "FareTypes")
+            try
             {
-                switch (fareTypeEvent.Action)
+                var eventBody = Encoding.UTF8.GetString(eventData.Body);
+                var fareTypeEvent = JsonConvert.DeserializeObject<FareTypeEvent>(eventBody);
+                if (fareTypeEvent != null && fareTypeEvent.Table == "FareTypes")
                 {
-                    case "insert":
-                        await _cosmosDb.Insert(fareTypeEvent.Data);
-                        break;
+                    log.LogInformation($"Action '{fareTypeEvent.Action}', data: {JsonConvert.SerializeObject(fareTypeEvent.Data)}");
+                    switch (fareTypeEvent.Action?.ToLower())
+                    {
+                        case "insert":
+                        case "update":
+                            await _cosmosDb.Upsert(fareTypeEvent.Data);
+                            break;
 
-                    case "update":
-                        await _cosmosDb.Update(fareTypeEvent.Id, fareTypeEvent.Data);
-                        break;
+                        case "delete":
+                            await _cosmosDb.Delete(fareTypeEvent.Id);
+                            break;
 
-                    case "delete":
-                        await _cosmosDb.Delete(fareTypeEvent.Id);
-                        break;
-
-                    case "sync":
-                        var fareTypes = await _db.FareTypes.ToListAsync();
-                        foreach (var fareType in fareTypes)
-                        {
-                            if (!await _cosmosDb.Insert(fareType))
+                        case "sync":
+                            var fareTypes = await _db.FareTypes.ToListAsync();
+                            foreach (var fareType in fareTypes)
                             {
-                                await _cosmosDb.Update(fareType.FareTypeId.ToString(), fareType);
+                                await _cosmosDb.Upsert(fareType);
                             }
-                        }
-                        break;
+                            break;
+
+                        default:
+                            log.LogWarning($"Unknown action: {fareTypeEvent.Action}");
+                            break;
+                    }
                 }
+                else
+                {
+                    log.LogWarning($"Unknown event: {eventBody}");
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogError($"Unhandled exception: {ex.Message}");
             }
         }
     }

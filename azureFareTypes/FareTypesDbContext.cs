@@ -39,6 +39,27 @@ namespace azureFareTypes
             return fareType == null;
         }
 
+        public async Task<bool> Upsert(int id, FareType data)
+        {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            var fareType = FareTypes.Find(data.FareTypeId);
+            if (fareType == null)
+            {
+                FareTypes.Add(data);
+            }
+            else
+            {
+                foreach (var property in typeof(FareType).GetProperties())
+                {
+                    property.SetValue(fareType, property.GetValue(data, null), null);
+                }
+            }
+            await SaveChangesAsync();
+            return true;
+        }
+
         public async Task<bool> Update(int id, FareType data)
         {
             var fareType = FareTypes.Find(id);
