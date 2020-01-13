@@ -35,7 +35,7 @@ namespace azureFareTypes.Tests
         public async Task DeleteTest()
         {
             var cosmosDb = new FakeCosmosDb();
-            await cosmosDb.Insert(new FareType() { FareTypeId = 123 });
+            await cosmosDb.Upsert(new FareType() { FareTypeId = 123 });
 
             var fareTypeEvent = new FareTypeEvent()
             {
@@ -54,7 +54,7 @@ namespace azureFareTypes.Tests
         public async Task UpdateTest()
         {
             var cosmosDb = new FakeCosmosDb();
-            await cosmosDb.Insert(new FareType() { FareTypeId = 123, DistanceRate = 4 });
+            await cosmosDb.Upsert(new FareType() { FareTypeId = 123, DistanceRate = 4 });
 
             var fareTypeEvent = new FareTypeEvent()
             {

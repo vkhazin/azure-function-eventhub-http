@@ -25,7 +25,7 @@ namespace azureFareTypes.Tests
         {
             var cosmosDb = new FakeCosmosDb();
 
-            await cosmosDb.Insert(new FareType() { FareTypeId = 123 });
+            await cosmosDb.Upsert(new FareType() { FareTypeId = 123 });
 
             var resultOk = await new FareTypesHttpTrigger(Db, cosmosDb).RunGet(req: HttpRequestSetup(), 123, log: Log);
             Assert.IsInstanceOfType(resultOk, typeof(OkObjectResult));
@@ -39,8 +39,8 @@ namespace azureFareTypes.Tests
         {
             var cosmosDb = new FakeCosmosDb();
 
-            await cosmosDb.Insert(new FareType() { FareTypeId = 123 });
-            await cosmosDb.Insert(new FareType() { FareTypeId = 456 });
+            await cosmosDb.Upsert(new FareType() { FareTypeId = 123 });
+            await cosmosDb.Upsert(new FareType() { FareTypeId = 456 });
 
             var resultOk = await new FareTypesHttpTrigger(Db, cosmosDb).RunGetAll(req: HttpRequestSetup(), log: Log);
             Assert.IsInstanceOfType(resultOk, typeof(OkObjectResult));
@@ -98,13 +98,8 @@ namespace azureFareTypes.Tests
             var body1 = JsonConvert.SerializeObject(new FareType { FareTypeId = 123 });
             var body2 = JsonConvert.SerializeObject(new FareType { FareTypeId = 123, Description = "zzz" });
 
-            var resultPost404 = await new FareTypesHttpTrigger(db, cosmosDb).RunPut(req: HttpRequestSetup(body2), 123, log: Log);
-            Assert.AreEqual(StatusCodes.Status404NotFound, ((StatusCodeResult)resultPost404).StatusCode);
-
-            var resultPost201 = await new FareTypesHttpTrigger(db, cosmosDb).RunPost(req: HttpRequestSetup(body1), log: Log);
-            Assert.AreEqual(StatusCodes.Status201Created, ((StatusCodeResult)resultPost201).StatusCode);
-            Assert.AreEqual(1, await db.FareTypes.CountAsync(ft => ft.FareTypeId == 123));
-            Assert.AreEqual(0, await db.FareTypes.CountAsync(ft => ft.Description == "zzz"));
+            var resultPost404 = await new FareTypesHttpTrigger(db, cosmosDb).RunPut(req: HttpRequestSetup(body1), 123, log: Log);
+            Assert.AreEqual(StatusCodes.Status200OK, ((StatusCodeResult)resultPost404).StatusCode);
 
             var resultPost200 = await new FareTypesHttpTrigger(db, cosmosDb).RunPut(req: HttpRequestSetup(body2), 123, log: Log);
             Assert.AreEqual(StatusCodes.Status200OK, ((StatusCodeResult)resultPost200).StatusCode);

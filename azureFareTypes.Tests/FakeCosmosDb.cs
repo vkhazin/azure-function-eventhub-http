@@ -17,35 +17,18 @@ namespace azureFareTypes.Tests
             return fakeData.ContainsKey(id) ? fakeData[id] : null;
         }
 
-        public async Task<FareType[]> GetAll()
+        public async Task<FareType[]> GetAll(int skip, int limit)
         {
-            return fakeData.Values.Select(f => f.ToFareType()).ToArray();
+            return fakeData.Values.Skip(skip).Take(limit).Select(f => f.ToFareType()).ToArray();
         }
 
-        public async Task<bool> Insert(FareType data)
+        public async Task<bool> Upsert(FareType data)
         {
             if (data == null)
-                throw new ArgumentNullException(nameof(data));
+                return false;
 
-            var existingItem = await Get(data.FareTypeId);
-            if (existingItem == null)
-            {
-                fakeData[data.FareTypeId.ToString()] = new CosmosFareType(data, 1);
-            }
-            return existingItem == null;
-        }
-
-        public async Task<bool> Update(string id, FareType data)
-        {
-            if (string.IsNullOrEmpty(id))
-                throw new ArgumentNullException(nameof(id));
-
-            var existingItem = await Get(id);
-            if (existingItem != null)
-            {
-                fakeData[data.FareTypeId.ToString()] = new CosmosFareType(data, 1);
-            }
-            return existingItem != null;
+            fakeData[data.FareTypeId.ToString()] = new CosmosFareType(data, 1);
+            return true;
         }
 
         public async Task<bool> Delete(string id)
