@@ -2,7 +2,7 @@
 ## SQL Server
 
 1. Configure connectivity settings using the following instruction: https://docs.microsoft.com/en-us/azure/virtual-machines/windows/sql/virtual-machines-windows-sql-connect#change Set `SQL Connectivity` to `Public`, `SQL Authentication` to `Enable`, set login and password. 
-2. Construct connection string: `Server=<your_vm>.cloudapp.azure.com;Integrated Security=false;User ID=<login_name>;Password=<your_password>`
+2. Construct connection string: `Server=<your_vm>.cloudapp.azure.com;Integrated Security=false;User ID=<login_name>;Password=<your_password>;Database=<database_name>`
 
 ## Azure
 ### Create resource group and storage account
@@ -31,14 +31,15 @@ Full set of settings is required for both functions:
 3. Click **Configuration** under Configured features on the Overview tab
 4. Use **New Application Setting** button to add settings
 
-* `AzureWebJobsStorage`: storage account connection string, required for event hub trigger. How to get it from Azure Portal: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string#view-and-copy-a-connection-string
 * `SqlConnectionString`: SQL Server connection string constructed above.
 * `CosmosEndpointUri`: Cosmos Db account endpoint Uri (https://docs.microsoft.com/en-us/azure/cosmos-db/secure-access-to-data#master-keys)
 * `CosmosPrimaryKey`: Cosmos Db Primary key
 * `CosmosDatabaseId` and `CosmosContainterId`: database and container ids
 * `EventHubConnectionString`: event hub connection string. How to obtain: https://docs.microsoft.com/en-us/azure/event-hubs/event-hubs-get-connection-string#get-connection-string-from-the-portal
 
-These settings should be also added to `local.settings.json` file to run app locally.
+These settings should be also added to `local.settings.json` file to run app locally, and also the following one:
+
+* `AzureWebJobsStorage`: storage account connection string, required for event hub trigger. How to get it from Azure Portal: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string#view-and-copy-a-connection-string
 
 ## Deploy
 
@@ -51,3 +52,31 @@ func azure functionapp publish <funcEventHub>
 
     cd azureFareTypes
     func start --build
+
+# Samples
+## HTTP Trigger
+
+GET list:
+
+    curl -X GET https://faretypeshttp.azurewebsites.net/api/faretypes/?skip=0&limit=20&code=CL1jdc9gYYot6rsDTczfAKiPvcZTLHnNqp52XD3LbWAFaKfKSgXTGA==
+
+GET:
+
+    curl -X GET https://faretypeshttp.azurewebsites.net/api/faretypes/1?code=CL1jdc9gYYot6rsDTczfAKiPvcZTLHnNqp52XD3LbWAFaKfKSgXTGA==
+
+POST:
+
+    curl -X POST -d '{ FareTypeId: 123 }' 'https://faretypeshttp.azurewebsites.net/api/faretypes?code=wNpO5a/CdHIsRapPHVdjvdwU4qlfixuwzxLXCPzwQ3mV2kh7JoLAlA=='
+
+DELETE:
+
+    curl -X DELETE https://faretypeshttp.azurewebsites.net/api/faretypes/123?code=CTPa9VMJ0XyoLHSik19DMCodBX/aQRUdqYqVWz2uSNbdBxyJNjYnLQ==
+    
+## Event Hub
+
+A simple console app is added to the repository for sending events to hub:
+
+    cd azureFareTypes.Sender
+    dotnet run '{ \"table\": \"FareTypes\", \"action\": \"sync\", \"timestamp\": \"2002-10-02T15:00:00.05Z\", \"id\": \"\", \"data\": {} }'
+    
+    dotnet run '{ \"table\": \"FareTypes\", \"action\": \"insert\", \"timestamp\": \"2002-10-02T15:00:00.05Z\", \"id\": \"1234\", \"data\": {\"FareTypeId\": \"1234\"} }'
